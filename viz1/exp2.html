@@ -1,0 +1,283 @@
+<html>
+    <head>
+    	<meta charset="utf-8">
+        
+        <!-- CSS -->
+        <link rel="stylesheet" href="style.css"></link>
+        <link rel="stylesheet" href="./bootstrap-3.3.5-dist/css/bootstrap.css"></link>
+
+
+        <!--JS-->
+        <script type="text/javascript" src="d3/d3.js"></script>
+        <script type="text/javascript" src="./bootstrap-3.3.5-dist/css/bootstrap.js"></script>
+        <!--<script type="text/javascript" src="./others/js/dc.js"></script>--->
+        <!--<script type="text/javascript" src="./others/js/crossfilter.js"></script>-->
+        <script type="text/javascript" src="./others/js/jquery-1.11.3.js"></script>
+    </head>
+    <body>
+    	<script type="text/javascript">
+    		// Base Elastic Search URL
+			url_base_search = "http://localhost:9200/yelp/review/_search?size=5000"
+			url_base_search_count = "http://localhost:9200/yelp/review/_search?search_type=count&size=5000"
+
+			// Mon Ami Gabi (Highest Rated Restaurant on Vegas Strip)
+			//url_1 = '{"query":{"match":{"business_id":"4bEjOyTaDG24SY5TxsaUNQ"}}}'
+			url_1 = '{"query":{"match":{"business_id":"4bEjOyTaDG24SY5TxsaUNQ"}},"size":5000,"aggs":{"date":{"terms":{"field":"date","size":5000,"order":{"_term":"asc"}},"aggs":{"stars_stats":{"extended_stats":{"field":"stars"}}}}}}'
+
+			url_2 = '{"query":{"match":{"business_id":"4bEjOyTaDG24SY5TxsaUNQ"}},"aggs":{"histo":{"date_histogram":{"field":"date","interval":"year"},"aggs":{"stars_stats":{"extended_stats":{"field":"stars"}}}}}}'
+
+			url_3 = '{"query":{"match":{"business_id":"4bEjOyTaDG24SY5TxsaUNQ"}},"aggs":{"histo":{"date_histogram":{"field":"date","interval":"month"},"aggs":{"stars_stats":{"extended_stats":{"field":"stars"}}}}}}'
+
+			//Width and height
+			var w = 1400;
+			var h = 200;
+			var barPadding = 0.2;
+			 var margin = {top:100,bottom:100,right:100,left:100};	
+
+			//Test Data
+			var data_t = {
+							"aggregations": {
+									"date": {
+										"buckets": [
+											{
+												"stars_stats": {
+													"avg": 1
+												}
+											},
+											{
+												"stars_stats": {
+													"avg": 2
+												}
+											},
+											{
+												"stars_stats": {
+													"avg": 3
+												}
+											},
+											{
+												"stars_stats": {
+													"avg": 4
+												}
+											},
+											{
+												"stars_stats": {
+													"avg": 5
+												}
+											}
+										]
+									}
+								}
+						 }
+
+				//2005-06-23T00:00:00.000Z
+				var parseDate = d3.time.format("%y-%m-%d").parse;
+
+
+	          	// Set y scale for the Ratings. Domain: 1-5
+	          	var yScale = d3.scale.linear()
+	                    .domain([1, 5])
+	                    .range([40,h])
+
+
+	            // Set y Axis
+	            var yAxis = d3.svg.axis()
+	                  .scale(yScale)
+	                  .orient("left")
+	                  .ticks(5);
+
+			//Load Data
+			var data;
+			d3.json(url_base_search_count, function(error, d){
+				if (error) {  //If error is not null, something went wrong.
+		          console.log(error);  //Log the error.
+		        } else {      //If no error, the file loaded correctly. Yay!
+		          console.log(d);
+
+		          //Save the Data
+		          data =  d
+		          //data = data_t
+		          num_buckets = data.aggregations.date.buckets.length
+
+					// Set x scale
+	          		var xScale = d3.scale.linear()
+	                    .domain([0, num_buckets])
+	                    .range([0,w])
+
+	                // Set x Axis
+	          		var xAxis = d3.svg.axis()
+	                  .scale(xScale)
+	                  .orient("bottom");
+
+		          	var svg = d3.select("#viz1")
+			            .append("svg")
+			            .attr("width", w)
+			            .attr("height", h)
+			            .attr("transform","translate(" + margin.left+","+margin.top+")");
+
+			      	svg.selectAll("rect")
+					   .data(data.aggregations.date.buckets)
+					   .enter()
+					   .append("rect")
+					   .attr("x", function(d, i) {
+						    return 10 + i * (w / num_buckets);
+						})
+					   .attr("y", function(d) {
+						    //return h - d.stars_stats.avg * 40;  //Height minus data value
+						    return h - yScale(d.stars_stats.avg)
+						})
+					   .attr("width", w / num_buckets - barPadding)
+					   .attr("height", function(d) {
+						    //return h - (h / 5)*(5 - d.stars_stats.avg);  //Height minus data value
+						    return yScale(d.stars_stats.avg);
+						})
+					   .attr("fill", "orange")
+					   .on("mouseover", function(d) {
+					        d3.select(this)
+					          .attr("fill", "blue");
+					        d3.select('#stats')
+					            .transition()
+      							.duration(250)
+					        	//console.log(d.key_as_string.split('T')[0])
+					           .text(d.key_as_string.split('T')[0] 
+					           	+ ", Avg. Rating: " + d3.round(d.stars_stats.avg,2)
+					           	+ ", Count: " + d.stars_stats.count
+					           	+ ", Min: " + d.stars_stats.min
+					           	+ ", Max: " + d.stars_stats.max)
+						})
+					   .on("mouseout", function() {
+					        d3.select(this)
+					          .attr("fill", "orange");
+						});
+
+					svg.append("g")
+					    .attr("class", "axis") //Assign "axis" class
+					    .attr("transform", "translate(0," + (h - 1) + ")")
+					    .call(xAxis);
+
+					svg.append("g")
+					    .attr("class", "axis")
+					    .attr("transform", "translate(" + 5 + ",0)")
+					    .call(yAxis);
+	
+			    }
+			})
+			.header("Content-Type","application/json")
+   			.send("POST", url_1)
+
+   			var svg = d3.select("#viz2")
+	            .append("svg")
+	            .attr("width", w)
+	            .attr("height", h)
+	            .attr("transform","translate(" + margin.left+","+margin.top+")");
+
+   			
+	   		function updateData(state) {
+	   			console.log('Clicked ' + state)
+	   			var url = null
+	   			if(state == 'y') {
+	   				url = url_2
+	   			} else {
+	   				url = url_3
+	   			}
+
+	   			d3.json(url_base_search_count, function(error, d){
+					if (error) {  //If error is not null, something went wrong.
+			          console.log(error);  //Log the error.
+			        } else {      //If no error, the file loaded correctly. Yay!
+			          console.log(d);
+			      	}
+
+			      	//Save the Data
+			        data =  d
+			        //data = data_t
+			         num_buckets = data.aggregations.histo.buckets.length
+
+			      	// Set x scale
+	          		var xScale = d3.scale.linear()
+	                    .domain([0, num_buckets])
+	                    .range([0,w])
+
+	                // Set x Axis
+	          		var xAxis = d3.svg.axis()
+	                  .scale(xScale)
+	                  .orient("bottom");
+
+	                // Set y scale for the Ratings. Domain: 1-5
+		          	var yScale = d3.scale.linear()
+		                    //.domain([0, d3.max(data, function(d) { return data.aggregations.histo.buckets.stars_stats.count; })])
+		                    .domain([0,200])
+		                    .range([0,h])
+
+		            // Set y Axis
+		            var yAxis = d3.svg.axis()
+		                  .scale(yScale)
+		                  .orient("left")
+		                  .ticks(5);
+
+		            d3.select("#svg1").remove();
+
+		            var svg1 = d3.select("#viz2")
+			            .append("svg")
+			            .attr("id","svg1")
+			            .attr("width", w)
+			            .attr("height", h)
+			            .attr("transform","translate(" + margin.left+","+margin.top+")");
+
+			      	svg1.selectAll("rect")
+					   .data(data.aggregations.histo.buckets)
+					   .enter()
+					   .append("rect")
+					   .attr("x", function(d, i) {
+						    return 10 + i * (w / num_buckets);
+						})
+					   .attr("y", function(d) {
+						    return h - yScale(d.stars_stats.count)
+						})
+					   .attr("width", w / num_buckets - barPadding)
+					   .attr("height", function(d) {
+						    return yScale(d.stars_stats.count);
+						})
+					   .attr("fill", "red")
+
+			    })
+			    .header("Content-Type","application/json")
+   				.send("POST", url)
+	   		}
+
+    	</script>
+
+    	<h3>Yelp Ratings for 'Mon Ami Gabi' - Restaurant with max number of reviews on Las Vegas Strip (Nevada)</h3>
+    	
+    	<br/>
+    	<br/>
+    	
+    	<div class="center-block bg-primary" id='stats'></div>
+    	<br/>
+    	<br/>
+    	<div id='viz1'></div>
+    	<br/>
+    	<br/>
+
+    	<div>
+    		<p>
+			  <button type="button" class="btn btn-primary btn-xs" id='yearly' onclick="updateData('y')">Yearly</button>
+			  <button type="button" class="btn btn-primary btn-xs" id='monthly' onclick="updateData('m')">Monthly</button>
+			</p>
+    	</div>
+    	
+    	<br/>
+    	<br/>
+
+    	<div id='viz2'></div>
+
+    </body>
+
+</html>
+
+
+
+
+
+
+
+

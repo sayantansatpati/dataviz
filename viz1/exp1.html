@@ -1,0 +1,124 @@
+<html>
+    <head>
+    	<meta charset="utf-8">
+        
+        <!-- CSS -->
+        <link rel="stylesheet" href="style.css"></link>
+        <link rel="stylesheet" href="./bootstrap-3.3.5-dist/css/bootstrap.css"></link>
+
+
+        <!--JS-->
+        <script type="text/javascript" src="d3/d3.js"></script>
+        <script type="text/javascript" src="./bootstrap-3.3.5-dist/css/bootstrap.js"></script>
+        <!--<script type="text/javascript" src="./others/js/dc.js"></script>--->
+        <!--<script type="text/javascript" src="./others/js/crossfilter.js"></script>-->
+        <script type="text/javascript" src="./others/js/jquery-1.11.3.js"></script>
+    </head>
+    <body>
+    	<script type="text/javascript">
+    		if (3 < 5) {
+			    console.log("Eureka! Three is less than five!");
+			}
+
+			for (var i = 0; i < 5; i++) {
+			    console.log(i);  //Prints value to console
+			}
+
+			var a = [100,101,102];
+			for (var i = 0; i < a.length; i++) {
+			    console.log(a[i]);  //Prints value to console
+			}
+
+			var b = [
+				{
+					"x": 1,
+					"y": 2,
+					"z": 3
+				},
+				{
+					"x": 11,
+					"y": 12,
+					"z": 13
+				}
+			];
+
+			for (var i = 0; i < b.length; i++) {
+			    console.log(b[i].y);  //Prints value to console
+			}
+
+			var calculateGratuity = function(bill) {
+			    return bill * 0.2;
+			};
+			var tip = calculateGratuity(38);
+			console.log(tip);
+
+			d3.select("body")
+			    .append("p")
+			    .text("New paragraph Added by D3!");
+
+
+			// Base Elastic Search URL
+			url_base_search = "http://localhost:9200/yelp/review/_search?size=5000"
+			url_base_search_count = "http://localhost:9200/yelp/review/_search?search_type=count&size=5000"
+
+			// Mon Ami Gabi (Highest Rated Restaurant on Vegas Strip)
+			//url_1 = '{"query":{"match":{"business_id":"4bEjOyTaDG24SY5TxsaUNQ"}}}'
+			url_1 = '{"query":{"match":{"business_id":"4bEjOyTaDG24SY5TxsaUNQ"}},"size":5000,"aggs":{"date":{"terms":{"field":"date","size":5000,"order":{"_term":"asc"}},"aggs":{"stars_stats":{"extended_stats":{"field":"stars"}}}}}}'
+
+			//Load Data
+			var data;
+			d3.json(url_base_search_count, function(error, d){
+				if (error) {  //If error is not null, something went wrong.
+		          console.log(error);  //Log the error.
+		        } else {      //If no error, the file loaded correctly. Yay!
+		          console.log(d);
+		          data =  d
+
+		          d3.select("body").selectAll("p")
+				    .data(data.aggregations.date.buckets)
+				    .enter()
+				    .append("p")
+				    .classed('lead', 'true')
+				    .classed('bg-primary', 'true')
+				    .text(function(d){
+				    	return d.stars_stats.avg
+				    });
+			    }
+			})
+			.header("Content-Type","application/json")
+   			.send("POST", url_1)
+
+    	</script>
+    	
+
+    	<h1>Trying Hard to Learn Data Viz!!! :(</h1>
+    	<ul>
+    		<li>lies</li>
+    		<li>more lies</li>
+    		<li>damn lies</li>
+    	</ul>
+    	<h2>Trying Hard to Learn Data Viz!!! :(</h2>
+    	<h3>Trying Hard to Learn Data Viz!!! :(</h3>
+    	<h4>Trying Hard to Learn Data Viz!!! :(</h4>
+        
+        <p>If I were to ask you, as a mere paragraph, would you say that
+        I have style?</p>
+
+        <p style="color: blue; font-size: 48px; font-style: italic;">Inline styles
+are kind of a hassle</p>
+
+		<svg width="200" height="50">
+		    <circle cx="25" cy="25" r="22" fill="blue" stroke="gray" stroke-width="2"/>
+		    <circle cx="100" cy="25" r="22" class="pumpkin"/>
+		</svg>
+
+    </body>
+</html>
+
+
+
+
+
+
+
+
